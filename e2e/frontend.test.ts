@@ -16,7 +16,11 @@ const manifest = fileURLToPath(new URL('../examples/laravel/bootstrap/cache/satc
 const vendorIndex = fileURLToPath(new URL(`../tests/Fixtures/AcmeBilling/resources/${directory}/Pages/Invoices/Index.${extension}`, import.meta.url));
 
 async function devServer(): Promise<{ child: ChildProcess; output: () => string }> {
-  const child = spawn('npm', ['run', 'dev:example'], { cwd: root, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn('npm', ['run', 'dev:example'], {
+    cwd: root, detached: true, stdio: ['ignore', 'pipe', 'pipe'],
+    // This child intentionally tests HMR in CI; Laravel otherwise forbids serve.
+    env: { ...process.env, LARAVEL_BYPASS_ENV_CHECK: '1' },
+  });
   let output = '';
   child.stdout?.on('data', (data: Buffer) => { output = (output + data.toString()).slice(-8000); });
   child.stderr?.on('data', (data: Buffer) => { output = (output + data.toString()).slice(-8000); });
@@ -26,10 +30,17 @@ async function devServer(): Promise<{ child: ChildProcess; output: () => string 
       try { return (await fetch('http://127.0.0.1:5173/@vite/client')).ok; } catch { return false; }
     }, { timeout: 30_000 }).toBe(true);
   } catch (error) {
-    if (child.pid) process.kill(-child.pid, 'SIGTERM');
+    stop(child);
     throw new Error(`Vite did not start: ${output}`, { cause: error });
   }
   return { child, output: () => output };
+}
+
+function stop(child: ChildProcess) {
+  if (!child.pid || child.exitCode !== null) return;
+  try { process.kill(-child.pid, 'SIGTERM'); } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error;
+  }
 }
 
 test(`${framework}: vendor pages, overrides, props, layouts, Tailwind, and live development`, async ({ page }) => {
@@ -117,7 +128,7 @@ test(`${framework}: vendor pages, overrides, props, layouts, Tailwind, and live 
     if (vite) await test.info().attach('vite-dev.log', { body: vite.output(), contentType: 'text/plain' });
     if (vite?.child.pid && vite.child.exitCode === null) {
       const exited = new Promise<void>((resolve) => vite!.child.once('exit', () => resolve()));
-      process.kill(-vite.child.pid, 'SIGTERM');
+      stop(vite.child);
       await exited;
     }
     await rm(fileURLToPath(new URL('../examples/laravel/public/hot', import.meta.url)), { force: true });
