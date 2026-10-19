@@ -6,3 +6,14 @@
 /.phpstan-cache/
 /coverage/
 /test-results/
+node_modules/
+packages/*/dist/
+/playwright-report/
+/examples/laravel/vendor/
+/examples/laravel/composer.lock
+/examples/laravel/.env
+/examples/laravel/public/build/
+/examples/laravel/public/hot
+/examples/laravel/resources/js/satchel-pages.d.ts
+/examples/laravel/bootstrap/cache/*.php
+/examples/laravel/bootstrap/cache/satchel.json

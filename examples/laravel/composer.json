@@ -1,0 +1,28 @@
+{
+    "name": "dgtlss/satchel-example",
+    "description": "Local Laravel and Vue example for Satchel; never published.",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": "^8.3",
+        "acme/billing": "dev-main",
+        "dgtlss/satchel": "dev-main",
+        "laravel/framework": "^12.0 || ^13.0"
+    },
+    "repositories": [
+        {"type": "path", "url": "../..", "options": {"symlink": true, "versions": {"dgtlss/satchel": "dev-main"}}},
+        {"type": "path", "url": "../../tests/Fixtures/AcmeBilling", "options": {"symlink": true, "versions": {"acme/billing": "dev-main"}}}
+    ],
+    "autoload": {
+        "psr-4": {"App\\": "app/"}
+    },
+    "scripts": {
+        "post-autoload-dump": [
+            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+            "@php artisan package:discover --ansi"
+        ]
+    },
+    "config": {"sort-packages": true},
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

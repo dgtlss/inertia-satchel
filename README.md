@@ -2,7 +2,7 @@
 
 Blade-style vendor pages for **Inertia v3**, **Laravel 12/13**, and **PHP 8.3+**. MIT licensed; Composer package name: `dgtlss/satchel`.
 
-**Unreleased, week 1: PHP only.** Registration, resolution, manifests, and Artisan commands are implemented. Browser page loading awaits the JavaScript resolver and Vite plugin in week 2. Nothing has been published to Composer or npm.
+**Unreleased, week 2: PHP and Vue.** Registration, resolution, manifests, Artisan commands, the TypeScript resolver, and the Vite plugin are implemented. The Laravel/Vue example is tested in production and dev. React, Svelte, and SSR integration remain week 3 work. Nothing has been published to Composer or npm.
 
 ## Register package pages
 
@@ -34,7 +34,7 @@ Satchel checks **every app override extension first**, then the package's extens
 
 An app `.tsx` override beats a package `.vue` page. Nested, extensionless page names support letters, digits, `_`, `-`, and `/`. Traversal, extensions in component names, and symlinks escaping a declared page root are rejected. Directory symlinks are not followed during inventory scans. App-only pages in a registered namespace are supported; they have no package source to publish or compare for drift.
 
-The response's `component` remains **`acme-billing::Invoices/Index`** for either source. No absolute filesystem path is sent to the browser. The week 2 resolver will use the same manifest and precedence rules. Regular app component names, props, partial reloads, enums, and Inertia's optional strict page checks continue to work.
+The response's `component` remains **`acme-billing::Invoices/Index`** for either source. No absolute filesystem path is sent in the Inertia response. The JavaScript resolver uses the same manifest and precedence rules. Regular app component names, props, partial reloads, enums, and Inertia's optional strict page checks continue to work.
 
 ## Commands and configuration
 
@@ -87,13 +87,24 @@ Configure extensions before registering pages; each registration retains its ext
 }
 ```
 
-Namespace entries are sorted. Paths use forward slashes; extensions have no leading dot and retain their precedence. Empty registrations produce `"namespaces": []`. The manifest is local build input, contains machine-specific paths, and should not be committed or served publicly. Regenerate it on the build machine after dependencies are installed and whenever providers or configuration change. The Vite plugin will need the configured location when it differs from the default.
+Namespace entries are sorted. Paths use forward slashes; extensions have no leading dot and retain their precedence. Empty registrations produce `"namespaces": []`. The manifest is local build input, contains machine-specific paths, and should not be committed or served publicly. Regenerate it on the build machine after dependencies are installed and whenever providers or configuration change. Configure the Vite plugin's `manifest` option when the location differs from the default.
 
-## JavaScript setup — coming soon
+## JavaScript setup (Vue)
 
-**Planned packages:** `@dgtlss/satchel` (Inertia resolver) and `vite-plugin-satchel` (manifest reader and Vite import map). Neither is implemented or published in week 1. The intended integration wraps the app's normal `createInertiaApp({ resolve })` resolver, resolving `namespace::Page` from a generated map and delegating regular app names to the app resolver. Final JavaScript APIs will be defined in week 2.
+The npm workspaces are `packages/satchel` (`@dgtlss/satchel`) and `packages/vite-plugin-satchel` (`vite-plugin-satchel`). With Vue's Vite plugin, enable `satchel()` and wrap the app's existing resolver:
 
-See [the week 2 contract](docs/week-2.md) for the manifest/resolver algorithm, Vite requirements, and Inertia integration points.
+```ts
+import { resolveSatchel } from '@dgtlss/satchel';
+
+createInertiaApp({
+  resolve: resolveSatchel(existingAppResolver),
+  // Keep the application's setup callback.
+});
+```
+
+The plugin reads the PHP manifest, provides `virtual:satchel/pages`, generates the `SatchelPage` type union, and handles watches/filesystem access for package pages. Use `@dgtlss/satchel/manual` for explicit glob maps without the plugin. Vue page default layout properties are preserved. Tailwind v4 needs an explicit vendor `@source` line.
+
+See the [JavaScript guide](docs/javascript.md) for configuration, generated code, manual mode, Tailwind, and week 3 limits; run the [Laravel example](examples/laravel/README.md) for a working app. The [week 2 contract](docs/week-2.md) records the PHP and Inertia integration boundaries. All packages remain unpublished.
 
 ## Develop
 
@@ -107,6 +118,17 @@ composer format:check
 # or: composer check
 ```
 
-The [Acme Billing fixture](tests/Fixtures/AcmeBilling) is a minimal example package with nested Vue and TSX pages. Pest uses isolated temporary app directories, so running the tests does not publish pages into a real application. PHPStan runs at level 8; Pint uses the Laravel preset.
+The [Acme Billing fixture](tests/Fixtures/AcmeBilling) is a minimal example package with nested Vue and TSX pages. Its Vue page/layout are also used by the browser example; the TSX page remains a PHP fixture. Pest uses isolated temporary app directories, so running the tests does not publish pages into a real application. PHPStan runs at level 8; Pint uses the Laravel preset.
+
+JavaScript uses Node 22.12+ and npm workspaces, with a committed npm lockfile:
+
+```sh
+npm ci
+npm run build
+npm test
+npm run typecheck
+# After installing the example's Composer dependencies and Chromium:
+npm run test:e2e
+```
 
 CI tests PHP 8.3, 8.4, and 8.5 against Laravel 12/Testbench 10 and Laravel 13/Testbench 11. A separate job checks Inertia 3.0.0. The library intentionally does not commit `composer.lock`, allowing each compatibility job to resolve its own framework/toolchain combination.

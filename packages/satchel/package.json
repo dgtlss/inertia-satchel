@@ -1,0 +1,16 @@
+{
+  "name": "@dgtlss/satchel",
+  "version": "0.0.0",
+  "description": "Overridable vendor page resolution for Inertia v3.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "files": ["dist", "client.d.ts"],
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./manual": { "types": "./dist/manual.d.ts", "import": "./dist/manual.js" },
+    "./client": { "types": "./client.d.ts" }
+  },
+  "scripts": { "build": "tsup" },
+  "engines": { "node": ">=22.12.0" }
+}

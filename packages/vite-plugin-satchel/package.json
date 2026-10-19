@@ -1,0 +1,14 @@
+{
+  "name": "vite-plugin-satchel",
+  "version": "0.0.0",
+  "description": "Manifest-driven vendor page imports for Satchel and Inertia v3.",
+  "license": "MIT",
+  "type": "module",
+  "files": ["dist"],
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
+  },
+  "peerDependencies": { "vite": "^7.3.0" },
+  "scripts": { "build": "tsup" },
+  "engines": { "node": ">=22.12.0" }
+}

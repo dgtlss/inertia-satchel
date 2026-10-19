@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "types": ["vite/client", "@dgtlss/satchel/client", "node"]
+  },
+  "include": ["resources/js/**/*.ts", "resources/js/**/*.vue", "vite.config.ts", "../../tests/Fixtures/AcmeBilling/resources/js/**/*.vue"]
+}

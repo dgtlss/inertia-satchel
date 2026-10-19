@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "paths": {
+      "@dgtlss/satchel/manual": ["./packages/satchel/src/manual.ts"]
+    },
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["packages/**/*.ts", "vitest.config.ts", "playwright.config.ts", "e2e/**/*.ts"]
+}

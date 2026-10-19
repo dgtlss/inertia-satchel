@@ -1,0 +1,5 @@
+@import "tailwindcss" source(none);
+
+@source "../js";
+/* Explicitly scan the Composer path-repository package, including its symlink. */
+@source "../../vendor/acme/billing/resources/js";

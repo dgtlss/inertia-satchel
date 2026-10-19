@@ -4,3 +4,12 @@
 /phpunit.xml.dist export-ignore
 /phpstan.neon.dist export-ignore
 /pint.json export-ignore
+/packages export-ignore
+/examples export-ignore
+/e2e export-ignore
+/package.json export-ignore
+/package-lock.json export-ignore
+/tsconfig.json export-ignore
+/vitest.config.ts export-ignore
+/playwright.config.ts export-ignore
+/scripts export-ignore

@@ -1,0 +1,27 @@
+{
+  "name": "satchel-workspace",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "workspaces": ["packages/*", "examples/laravel"],
+  "engines": { "node": ">=22.12.0" },
+  "packageManager": "npm@11.9.0",
+  "scripts": {
+    "build": "npm run build --workspace=@dgtlss/satchel --workspace=vite-plugin-satchel",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit && vue-tsc --noEmit -p examples/laravel/tsconfig.json",
+    "build:example": "npm run build --workspace=@satchel/example",
+    "dev:example": "npm run dev --workspace=@satchel/example",
+    "test:e2e": "npm run build && playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^22.0.0",
+    "@vitejs/plugin-vue": "^6.0.0",
+    "tsup": "^8.5.0",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.0",
+    "vitest": "^4.0.0",
+    "vue-tsc": "^3.0.0"
+  }
+}
