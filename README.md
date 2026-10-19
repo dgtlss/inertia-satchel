@@ -1,0 +1,1 @@
+# Satchel - Inertia / Laravel Package
