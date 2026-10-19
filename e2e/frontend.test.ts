@@ -7,11 +7,15 @@ import { fileURLToPath } from 'node:url';
 declare global { interface Window { satchelHmrMarker?: string } }
 
 const root = fileURLToPath(new URL('..', import.meta.url));
-const vendor = fileURLToPath(new URL('../tests/Fixtures/AcmeBilling/resources/js/Pages/Invoices/Show.vue', import.meta.url));
-const override = fileURLToPath(new URL('../examples/laravel/resources/js/Pages/vendor/acme-billing/Invoices/Index.vue', import.meta.url));
+const framework = process.env.SATCHEL_FRAMEWORK ?? 'vue';
+const directory = framework === 'vue' ? 'js' : framework;
+const extension = framework === 'react' ? 'tsx' : framework;
+const vendor = fileURLToPath(new URL(`../tests/Fixtures/AcmeBilling/resources/${directory}/Pages/Invoices/Show.${extension}`, import.meta.url));
+const override = fileURLToPath(new URL(`../examples/laravel/resources/${directory}/Pages/vendor/acme-billing/Invoices/Index.${extension}`, import.meta.url));
 const manifest = fileURLToPath(new URL('../examples/laravel/bootstrap/cache/satchel.json', import.meta.url));
+const vendorIndex = fileURLToPath(new URL(`../tests/Fixtures/AcmeBilling/resources/${directory}/Pages/Invoices/Index.${extension}`, import.meta.url));
 
-async function devServer(): Promise<ChildProcess> {
+async function devServer(): Promise<{ child: ChildProcess; output: () => string }> {
   const child = spawn('npm', ['run', 'dev:example'], { cwd: root, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
   let output = '';
   child.stdout?.on('data', (data: Buffer) => { output = (output + data.toString()).slice(-8000); });
@@ -25,20 +29,24 @@ async function devServer(): Promise<ChildProcess> {
     if (child.pid) process.kill(-child.pid, 'SIGTERM');
     throw new Error(`Vite did not start: ${output}`, { cause: error });
   }
-  return child;
+  return { child, output: () => output };
 }
 
-test('Vue vendor pages, overrides, props, layouts, Tailwind, and live development', async ({ page }) => {
+test(`${framework}: vendor pages, overrides, props, layouts, Tailwind, and live development`, async ({ page }) => {
   const errors: string[] = [];
+  const updates: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
+  page.on('websocket', (socket) => socket.on('framereceived', ({ payload }) => updates.push(String(payload))));
   const vendorSource = await readFile(vendor, 'utf8');
+  const indexSource = await readFile(vendorIndex, 'utf8');
   const overrideSource = await readFile(override, 'utf8');
   const manifestSource = await readFile(manifest, 'utf8');
-  let vite: ChildProcess | undefined;
+  let vite: Awaited<ReturnType<typeof devServer>> | undefined;
   try {
-    // The webServer command built production assets before starting Laravel.
+    // All adapters run the same behavior checks with their real Vite compiler.
     await page.goto('/billing/invoices/42');
     await expect(page.getByTestId('vendor-page')).toHaveText('Package invoice');
+    await page.waitForLoadState('networkidle');
     await expect(page.getByTestId('invoice-prop')).toHaveText('INV-0042');
     await expect(page.getByTestId('vendor-layout')).toBeVisible();
     await expect(page.getByTestId('vendor-card')).toHaveCSS('padding-top', '28px');
@@ -57,12 +65,25 @@ test('Vue vendor pages, overrides, props, layouts, Tailwind, and live developmen
     vite = await devServer();
     await page.goto('/billing/invoices/42');
     await expect(page.getByTestId('vendor-page')).toHaveText('Package invoice');
+    await page.waitForLoadState('networkidle');
     await page.getByTestId('layout-counter').click();
     await page.evaluate(() => { window.satchelHmrMarker = 'same document'; });
     await writeFile(vendor, vendorSource.replace('>Package invoice<', '>Package invoice HMR<'));
     await expect(page.getByTestId('vendor-page')).toHaveText('Package invoice HMR');
-    expect(await page.evaluate(() => window.satchelHmrMarker)).toBe('same document');
-    await expect(page.getByTestId('layout-counter')).toHaveText('Layout count: 1');
+    if (framework === 'svelte') {
+      // vite-plugin-svelte accepts only default; named layout exports bubble a reload.
+      expect(updates.some((message) => {
+        const event = JSON.parse(message);
+        return event.type === 'full-reload' && String(event.triggeredBy).endsWith('Show.svelte');
+      })).toBe(true);
+      expect(await page.evaluate(() => window.satchelHmrMarker)).toBeUndefined();
+      await expect(page.getByTestId('layout-counter')).toHaveText('Layout count: 0');
+      await page.getByTestId('layout-counter').click();
+    } else {
+      expect(await page.evaluate(() => window.satchelHmrMarker)).toBe('same document');
+      await expect(page.getByTestId('layout-counter')).toHaveText('Layout count: 1');
+    }
+    await page.evaluate(() => { window.satchelHmrMarker = 'before manifest'; });
 
     // Match PHP's atomic manifest write; this must reload, not retain stale maps.
     await writeFile(`${manifest}.tmp`, `${manifestSource}\n`);
@@ -75,17 +96,28 @@ test('Vue vendor pages, overrides, props, layouts, Tailwind, and live developmen
     await removed;
     await page.goto('/billing/invoices');
     await expect(page.getByRole('heading', { name: 'Package invoices', exact: true })).toBeVisible();
+    if (framework === 'svelte') {
+      // Default-only Svelte pages still hot update without replacing the document.
+      await page.waitForLoadState('networkidle');
+      await page.evaluate(() => { window.satchelHmrMarker = 'default-only page'; });
+      await writeFile(vendorIndex, indexSource.replace('>Package invoices<', '>Package invoices HMR<'));
+      await expect(page.getByRole('heading', { name: 'Package invoices HMR', exact: true })).toBeVisible();
+      expect(await page.evaluate(() => window.satchelHmrMarker)).toBe('default-only page');
+    }
     await writeFile(override, overrideSource);
     await expect(page.getByTestId('override-page')).toHaveText('App invoice list override');
     expect(errors).toEqual([]);
   } finally {
     await writeFile(vendor, vendorSource);
+    await writeFile(vendorIndex, indexSource);
     await writeFile(override, overrideSource);
     await writeFile(manifest, manifestSource);
     await rm(`${manifest}.tmp`, { force: true });
-    if (vite?.pid && vite.exitCode === null) {
-      const exited = new Promise<void>((resolve) => vite!.once('exit', () => resolve()));
-      process.kill(-vite.pid, 'SIGTERM');
+    await test.info().attach('vite-updates.json', { body: JSON.stringify(updates, null, 2), contentType: 'application/json' });
+    if (vite) await test.info().attach('vite-dev.log', { body: vite.output(), contentType: 'text/plain' });
+    if (vite?.child.pid && vite.child.exitCode === null) {
+      const exited = new Promise<void>((resolve) => vite!.child.once('exit', () => resolve()));
+      process.kill(-vite.child.pid, 'SIGTERM');
       await exited;
     }
     await rm(fileURLToPath(new URL('../examples/laravel/public/hot', import.meta.url)), { force: true });

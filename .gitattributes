@@ -13,3 +13,4 @@
 /vitest.config.ts export-ignore
 /playwright.config.ts export-ignore
 /scripts export-ignore
+/svelte.config.js export-ignore

@@ -15,5 +15,8 @@ packages/*/dist/
 /examples/laravel/public/build/
 /examples/laravel/public/hot
 /examples/laravel/resources/js/satchel-pages.d.ts
+/examples/laravel/resources/react/satchel-pages.d.ts
+/examples/laravel/resources/svelte/satchel-pages.d.ts
 /examples/laravel/bootstrap/cache/*.php
 /examples/laravel/bootstrap/cache/satchel.json
+/examples/laravel/bootstrap/ssr/

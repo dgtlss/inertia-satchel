@@ -2,7 +2,7 @@
 
 Blade-style vendor pages for **Inertia v3**, **Laravel 12/13**, and **PHP 8.3+**. MIT licensed; Composer package name: `dgtlss/satchel`.
 
-**Unreleased, week 2: PHP and Vue.** Registration, resolution, manifests, Artisan commands, the TypeScript resolver, and the Vite plugin are implemented. The Laravel/Vue example is tested in production and dev. React, Svelte, and SSR integration remain week 3 work. Nothing has been published to Composer or npm.
+**Unreleased, week 3: Vue, React, Svelte, and Vue SSR.** Registration, resolution, manifests, Artisan commands, the TypeScript resolvers, and the Vite plugin are implemented. All three adapters have production and dev browser checks; Vue also has server rendering and hydration checks. Nothing has been published to Composer or npm.
 
 ## Register package pages
 
@@ -89,7 +89,7 @@ Configure extensions before registering pages; each registration retains its ext
 
 Namespace entries are sorted. Paths use forward slashes; extensions have no leading dot and retain their precedence. Empty registrations produce `"namespaces": []`. The manifest is local build input, contains machine-specific paths, and should not be committed or served publicly. Regenerate it on the build machine after dependencies are installed and whenever providers or configuration change. Configure the Vite plugin's `manifest` option when the location differs from the default.
 
-## JavaScript setup (Vue)
+## JavaScript setup
 
 The npm workspaces are `packages/satchel` (`@dgtlss/satchel`) and `packages/vite-plugin-satchel` (`vite-plugin-satchel`). With Vue's Vite plugin, enable `satchel()` and wrap the app's existing resolver:
 
@@ -102,9 +102,9 @@ createInertiaApp({
 });
 ```
 
-The plugin reads the PHP manifest, provides `virtual:satchel/pages`, generates the `SatchelPage` type union, and handles watches/filesystem access for package pages. Use `@dgtlss/satchel/manual` for explicit glob maps without the plugin. Vue page default layout properties are preserved. Tailwind v4 needs an explicit vendor `@source` line.
+The plugin reads the PHP manifest, provides `virtual:satchel/pages`, generates the `SatchelPage` type union, and handles watches/filesystem access for package pages. Use `@dgtlss/satchel/manual` for explicit glob maps without the plugin. Vue and React page layout properties are preserved. Svelte uses `resolveSatchelModules(existingAppResolver)` to retain the full module, including its named `layout` export. Tailwind v4 needs an explicit vendor `@source` line.
 
-See the [JavaScript guide](docs/javascript.md) for configuration, generated code, manual mode, Tailwind, and week 3 limits; run the [Laravel example](examples/laravel/README.md) for a working app. The [week 2 contract](docs/week-2.md) records the PHP and Inertia integration boundaries. All packages remain unpublished.
+See the [JavaScript guide](docs/javascript.md) for plugin configuration and generated code, and the [week 3 guide](docs/week-3.md) for adapter APIs, Vue SSR, compatibility, and remaining limits. The [Laravel example](examples/laravel/README.md) hosts all three frontends. The [week 2 contract](docs/week-2.md) records the PHP and Inertia integration boundaries. All packages remain unpublished.
 
 ## Develop
 
@@ -118,7 +118,7 @@ composer format:check
 # or: composer check
 ```
 
-The [Acme Billing fixture](tests/Fixtures/AcmeBilling) is a minimal example package with nested Vue and TSX pages. Its Vue page/layout are also used by the browser example; the TSX page remains a PHP fixture. Pest uses isolated temporary app directories, so running the tests does not publish pages into a real application. PHPStan runs at level 8; Pint uses the Laravel preset.
+The [Acme Billing fixture](tests/Fixtures/AcmeBilling) ships separate Vue, React, and Svelte pages/layouts for the browser example. Its original `resources/js/Pages/Dashboard.tsx` remains a PHP fixture. Pest uses isolated temporary app directories, so running the tests does not publish pages into a real application. PHPStan runs at level 8; Pint uses the Laravel preset.
 
 JavaScript uses Node 22.12+ and npm workspaces, with a committed npm lockfile:
 
@@ -126,9 +126,13 @@ JavaScript uses Node 22.12+ and npm workspaces, with a committed npm lockfile:
 npm ci
 npm run build
 npm test
+npm run test:packed
+# The adapter type check loads the example's Vite config and manifest:
+composer install --working-dir=examples/laravel
 npm run typecheck
-# After installing the example's Composer dependencies and Chromium:
+npx playwright install chromium
 npm run test:e2e
+# Or select one: npm run test:e2e -- vue-ssr
 ```
 
 CI tests PHP 8.3, 8.4, and 8.5 against Laravel 12/Testbench 10 and Laravel 13/Testbench 11. A separate job checks Inertia 3.0.0. The library intentionally does not commit `composer.lock`, allowing each compatibility job to resolve its own framework/toolchain combination.

@@ -1,6 +1,6 @@
-# Laravel + Vue example
+# Laravel examples: Vue, React, Svelte, and Vue SSR
 
-A local Laravel 12/13 app using the root Composer package and `tests/Fixtures/AcmeBilling` as **symlinked Composer path repositories**. JavaScript dependencies come from npm workspaces. PHP 8.3+, Composer 2, and Node 22.12+ are required. No database or remote credentials are needed.
+A local Laravel 12/13 host using the root Composer package and `tests/Fixtures/AcmeBilling` as **symlinked Composer path repositories**. PHP 8.3+, Composer 2, and Node 22.12+ are required. No database or remote credentials are needed. All packages remain unpublished.
 
 From the repository root:
 
@@ -17,15 +17,48 @@ php artisan serve
 
 In another terminal, from the repository root, run `npm run dev:example`. For production assets use `npm run build:example` with Vite stopped and `examples/laravel/public/hot` absent.
 
-The home route demonstrates the original app resolver and PHP props. `/billing/invoices/42` loads a vendor Vue page with its own persistent default layout. `/billing/invoices` loads the app override of the package's invoice list. The vendor layout counter persists during Inertia navigation to the next invoice. Tailwind v4 explicitly scans the Composer symlink using `@source`.
-
-The existing `Dashboard.tsx` is retained as a PHP test fixture; it is not a React integration example. This app's `config/satchel.php` registers only the `vue` extension, matching its compiler and browser routes.
-
-For the full automated production/dev test, from the repository root:
+Vue is the default. To run React or Svelte, set **the same `SATCHEL_FRAMEWORK` value in PHP, manifest generation, and Vite**. For example, stop the previous servers, then:
 
 ```sh
-npx playwright install chromium
-npm run test:e2e
+cd examples/laravel
+export SATCHEL_FRAMEWORK=react # or svelte; Vue uses vue
+php artisan satchel:manifest
+php artisan serve
 ```
 
-The test runner generates a local `.env`/app key if absent, regenerates the manifest, builds production assets, and boots Laravel. It then starts Vite for HMR checks, temporarily edits the fixture/override files, and restores them in `finally`. Run one worker and avoid editing those same files during the test. A custom PHP wrapper can be selected with `PHP_BINARY`; `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` selects an installed Chromium instead of Playwright's bundled browser.
+In the second terminal, from the repository root:
+
+```sh
+SATCHEL_FRAMEWORK=react npm run dev:example
+# Or: SATCHEL_FRAMEWORK=react npm run build:example
+```
+
+Switching frameworks regenerates the shared manifest and production assets. Run one example at a time. `config:cache` must be cleared before changing the selection. The fixture's `acme-billing.pages_path` setting exists only to select among its three demo implementations; Satchel's registration API stays `Satchel::pages(namespace, path)`.
+
+| Framework | App directory | Package directory | Extension |
+| --- | --- | --- | --- |
+| Vue | `resources/js` | `resources/js` | `vue` |
+| React | `resources/react` | `resources/react` | `tsx` |
+| Svelte | `resources/svelte` | `resources/svelte` | `svelte` |
+
+All use the namespace `acme-billing`, with app overrides in their respective `Pages/vendor/acme-billing` directories. The fixture's original `resources/js/Pages/Dashboard.tsx` is retained for PHP tests and excluded from the Vue manifest.
+
+The home route demonstrates the original app resolver and PHP props. `/billing/invoices/42` loads a vendor page with its own persistent layout. `/billing/invoices` loads the app's invoice-list override. The package layout counter persists during Inertia navigation to the next invoice. Tailwind v4 explicitly scans the Composer symlink with `@source` lines.
+
+Vue/React pages carry a `layout` property on their default component. Svelte exports `layout` from its module script and uses `resolveSatchelModules()`. Svelte's current Vite plugin fully reloads pages with named layout exports when edited; default-only pages hot update. Vue and React page edits preserve the document and layout state.
+
+For Vue SSR, use the [week 3 instructions](../../docs/week-3.md#vue-production-ssr). The normal dev example uses client rendering. The production SSR build uses the same manifest and the public Inertia server entry, with `@dgtlss/satchel` included in `ssr.noExternal`.
+
+Automated checks from the repository root:
+
+```sh
+npm run typecheck
+npx playwright install chromium
+npm run test:e2e # Vue, Vue SSR, React, Svelte, sequentially
+npm run test:e2e -- vue-ssr # one target
+npm run test:packed # isolated npm tarball installation; no Laravel required
+```
+
+The browser runner creates local `.env`/app key and storage directories if absent, regenerates the manifest, builds production assets, and boots Laravel. Dev tests start Vite, temporarily edit fixture/override files, and restore them in `finally`. Run one worker and avoid editing those files during the tests. Failures retain browser traces, Vite messages, and JSON results under `test-results/playwright/<target>`.
+
+`PHP_BINARY` selects a PHP executable or wrapper; it must forward environment variables such as `SATCHEL_FRAMEWORK` and `INERTIA_SSR_ENABLED`. `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` selects an installed Chromium. The SSR renderer listens on the same machine's loopback address, so a containerized PHP wrapper must share that network or provide an equivalent `INERTIA_SSR_URL`.

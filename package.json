@@ -9,15 +9,17 @@
   "scripts": {
     "build": "npm run build --workspace=@dgtlss/satchel --workspace=vite-plugin-satchel",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit && vue-tsc --noEmit -p examples/laravel/tsconfig.json",
+    "typecheck": "tsc --noEmit && vue-tsc --noEmit -p examples/laravel/tsconfig.json && tsc --noEmit -p examples/laravel/tsconfig.react.json && node scripts/check-svelte.mjs",
     "build:example": "npm run build --workspace=@satchel/example",
     "dev:example": "npm run dev --workspace=@satchel/example",
-    "test:e2e": "npm run build && playwright test"
+    "test:e2e": "npm run build && node scripts/test-examples.mjs",
+    "test:packed": "npm run build && node scripts/test-packed.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",
     "@types/node": "^22.0.0",
     "@vitejs/plugin-vue": "^6.0.0",
+    "svelte-check": "^4.0.0",
     "tsup": "^8.5.0",
     "typescript": "~5.9.3",
     "vite": "^7.3.0",

@@ -1,6 +1,6 @@
-import type { AppResolver, PageGlob, PageModule, SatchelPages } from './types';
+import type { AppModuleResolver, AppResolver, PageGlob, PageModule, SatchelPages } from './types';
 
-export type { AppResolver, PageGlob, PageModule, PageNamespace, SatchelPages } from './types';
+export type { AppModuleResolver, AppResolver, PageGlob, PageModule, PageNamespace, SatchelPages } from './types';
 
 const normalize = (path: string): string => path.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/$/, '');
 
@@ -20,17 +20,31 @@ export function resolveSatchel<T, Args extends unknown[] = []>(
   appResolver: AppResolver<T, Args>,
   pages: SatchelPages<T>,
 ): (name: string, ...args: Args) => Promise<T> {
+  const resolve = namespacedResolver(pages);
+  return async (name, ...args) => !name.includes('::')
+    ? component(await appResolver(name, ...args))
+    : (await resolve(name)).default;
+}
+
+/** Preserve module-level exports, including Svelte's named layout export. */
+export function resolveSatchelModules<T, Args extends unknown[] = []>(
+  appResolver: AppModuleResolver<T, Args>,
+  pages: SatchelPages<T>,
+): (name: string, ...args: Args) => Promise<PageModule<T>> {
+  const resolve = namespacedResolver(pages);
+  return async (name, ...args) => !name.includes('::')
+    ? appResolver(name, ...args)
+    : resolve(name);
+}
+
+function namespacedResolver<T>(pages: SatchelPages<T>): (name: string) => Promise<PageModule<T>> {
   const overrides = index(pages.overrides);
   const namespaces = new Map(pages.namespaces.map((entry) => [entry.namespace, {
     ...entry,
     files: index(entry.pages),
   }]));
 
-  return async (name, ...args) => {
-    if (!name.includes('::')) {
-      return component(await appResolver(name, ...args));
-    }
-
+  return async (name) => {
     const parts = name.split('::');
     const namespace = parts[0] ?? '';
     const page = parts[1] ?? '';
@@ -58,7 +72,7 @@ export function resolveSatchel<T, Args extends unknown[] = []>(
           if (!module || !('default' in module) || module.default == null) {
             throw new Error(`[Satchel] Page [${name}] at [${path}] has no default component export.`);
           }
-          return module.default;
+          return module;
         }
       }
     }

@@ -9,7 +9,7 @@ import { readManifest } from './manifest';
 export interface SatchelOptions {
   /** Absolute or relative to Vite's root. Default: bootstrap/cache/satchel.json. */
   manifest?: string;
-  /** Eager imports, e.g. for a small app or a future SSR bundle. Default: false. */
+  /** Eager imports, e.g. for a small app or an SSR bundle. Default: false. */
   eager?: boolean;
   /** Output relative to Vite's root, or false. Default: resources/js/satchel-pages.d.ts. */
   dts?: string | false;
@@ -116,7 +116,7 @@ export default function satchel(options: SatchelOptions = {}): Plugin {
         reload(context.server);
         return [];
       }
-      // Existing page edits are handled by Vue's normal HMR, preserving layouts.
+      // Existing page edits are handled by the framework plugin's normal HMR.
     },
     closeBundle() { dispose(); },
   };

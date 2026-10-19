@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "types": ["vite/client", "@dgtlss/satchel/client", "node", "svelte"]
+  },
+  "include": ["resources/svelte/**/*.ts", "resources/svelte/**/*.svelte", "../../tests/Fixtures/AcmeBilling/resources/svelte/**/*.svelte"]
+}

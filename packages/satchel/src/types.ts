@@ -1,6 +1,8 @@
 /** Keep the module wrapper: eager function components must not be called as loaders. */
 export interface PageModule<T = unknown> {
   default: T;
+  /** Module resolvers retain named exports such as Svelte's layout. */
+  readonly [exportName: string]: unknown;
 }
 
 export type PageGlob<T = unknown> = Record<
@@ -26,3 +28,8 @@ export type AppResolver<T, Args extends unknown[] = []> = (
   name: string,
   ...args: Args
 ) => T | PageModule<T> | Promise<T | PageModule<T>>;
+
+export type AppModuleResolver<T, Args extends unknown[] = []> = (
+  name: string,
+  ...args: Args
+) => PageModule<T> | Promise<PageModule<T>>;

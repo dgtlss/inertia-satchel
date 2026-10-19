@@ -1,4 +1,4 @@
-# JavaScript and Vue integration
+# JavaScript integration
 
 The npm packages are unreleased workspaces: `packages/satchel` (`@dgtlss/satchel`) and `packages/vite-plugin-satchel` (`vite-plugin-satchel`). They build ESM and declarations with tsup, use TypeScript, and are tested with Vitest. The Composer package stays at the repository root, with its API and source unchanged.
 
@@ -98,19 +98,20 @@ Page content edits use Vue HMR and preserve the current document and layout stat
 
 Production assets need rebuilding when page files, overrides, extensions, or registration change. Keep PHP and client builds on the same manifest/files, and update the application's Inertia asset version on deployment. The manifest remains machine-specific build input rather than a public asset.
 
-## Checks and week 3 boundaries
+## Checks and adapter coverage
 
 ```sh
 npm ci
 npm run build
 npm test
-npm run typecheck
 composer install --working-dir=examples/laravel
+npm run typecheck
+npm run test:packed
 npm run test:e2e
 ```
 
-Vitest covers runtime resolution/errors, extension precedence, component identity, manual mode, manifest validation, declarations, symlink containment, real eager/lazy Vite builds, and Tailwind sources. One Playwright test exercises the built Laravel app, Vue navigation/props/layouts/overrides, template HMR without a reload, an atomic manifest reload, and adding/removing an override. PHP's existing suite remains a separate regression check. CI runs the JS/Vue checks on Node 24/PHP 8.3; Vite 7 is the declared plugin peer range.
+Vitest covers runtime resolution/errors, extension precedence, component/module identity, named layouts, manual mode, manifest validation, declarations, symlink containment, real eager/lazy Vite builds, and Tailwind sources. The same Playwright behavior test runs against Vue, React, and Svelte, including navigation, props, layouts, overrides, Tailwind, manifest replacement, and override addition/removal. Two additional tests verify Vue SSR without JavaScript and hydration of the original server DOM. PHP's existing suite remains a separate regression check. CI runs the package and browser checks on Node 24/PHP 8.3; Vite 7 is the declared plugin peer range.
 
-There is no known resolver-level blocker for React or Svelte: the runtime is framework-neutral and preserves default export identity. Week 3 still needs each official Inertia adapter, its Vite/JSX or Svelte compiler plugin, peer dependencies, types, layout semantics, and browser/HMR coverage. They are **not** verified by the Vue example or the generic eager-function unit test.
+`resolveSatchel()` returns a component for Vue and React. Svelte's public adapter expects a module with a named `layout` export, so use `resolveSatchelModules()`; the app resolver must also return modules. Both exports are available in `/manual` mode. No private Inertia imports are used. Svelte's current Vite plugin reloads pages with named exports rather than preserving state on those edits; default-only Svelte pages hot update. Vue/React template edits preserve the document and layout state.
 
-SSR is also **unverified**. The plugin can generate eager maps, but that alone does not establish SSR support. Week 3 needs a server entry using the same plugin/manifest, Vue server rendering/hydration tests, framework dependency externalization checks, and matching deployment asset versions. For an installed npm runtime, expect to keep `@dgtlss/satchel` in `ssr.noExternal` so Vite transforms its virtual import rather than leaving `virtual:satchel/pages` for Node to load. Shared component layout defaults must not capture per-request state. No private Inertia imports should be needed.
+Vue production SSR is verified with the public `@inertiajs/vue3/server` entry, using the same resolver and manifest as the browser. Keep `@dgtlss/satchel` in `ssr.noExternal` so Vite transforms its virtual import. The packed-installation check extracts actual npm tarballs into a separate temporary app and verifies client/SSR builds, overrides, module layouts, manual exports, and generated types. See [week 3](week-3.md) for setup, tested versions, and remaining React/Svelte SSR and dev SSR work.

@@ -1,6 +1,6 @@
 # @dgtlss/satchel
 
-Unreleased ESM runtime for Satchel's Inertia v3 page names. Vue is verified end to end; React, Svelte, and SSR integration are week 3 work. MIT licensed. Nothing is published to npm.
+Unreleased ESM runtime for Satchel's Inertia v3 page names. Vue, React, Svelte, and Vue SSR are verified end to end. MIT licensed. Nothing is published to npm.
 
 With `vite-plugin-satchel` enabled:
 
@@ -13,7 +13,17 @@ createInertiaApp({
 });
 ```
 
-The wrapper resolves `namespace::Folder/Page`, checking every app override extension before trying package extensions. It unwraps a module's default export without copying the component, preserving Vue's `layout` property. Regular names are delegated with their original arguments. Missing namespaced pages throw an error listing every attempted glob key. Lazy import errors retain their original error and stack.
+The wrapper resolves `namespace::Folder/Page`, checking every app override extension before trying package extensions. It unwraps a module's default export without copying the component, preserving Vue and React `layout` properties. Regular names are delegated with their original arguments. Missing namespaced pages throw an error listing every attempted glob key. Lazy import errors retain their original error and stack.
+
+For Svelte, use the module-preserving resolver:
+
+```ts
+import { resolveSatchelModules } from '@dgtlss/satchel';
+
+createInertiaApp({ resolve: resolveSatchelModules(existingAppResolver) });
+```
+
+`resolveSatchelModules<T>(appResolver, maps?)` returns the original `{ default: T, ...namedExports }` module. The app resolver must also return a module. Inertia's Svelte adapter reads the module's named `layout` export; unwrapping `default` would lose it. The plugin and manual entries export both resolver functions, plus `AppResolver`, `AppModuleResolver`, `PageModule`, `PageGlob`, `PageNamespace`, and `SatchelPages` types.
 
 The package imports no Inertia internals and has no Vue or Inertia runtime dependency. It uses only the public `createInertiaApp({ resolve })` contract.
 
@@ -40,4 +50,6 @@ const resolve = resolveSatchel<DefineComponent>(existingAppResolver, {
 
 Each `path` must match the key prefix produced by its glob **in that importer**. Use the PHP manifest's extension order. Eager maps (`{ eager: true }`) work too; retain the `{ default: Component }` module wrapper rather than using `import: 'default'`. This distinguishes eager function components from lazy import functions. Plain hand-written maps/loaders can be used with other bundlers.
 
-See the [Vue guide](../../docs/javascript.md) and [Laravel example](../../examples/laravel/README.md).
+`resolveSatchelModules(appResolver, maps)` uses this same map format in manual mode. It preserves module identity and named exports for both eager and lazy maps.
+
+For SSR, include the runtime in Vite's `ssr.noExternal` so its virtual import is transformed. See the [JavaScript guide](../../docs/javascript.md), [SSR and adapter guide](../../docs/week-3.md), and [Laravel example](../../examples/laravel/README.md).

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { resolveSatchel } from '../src/manual';
-import type { PageGlob, SatchelPages } from '../src/types';
+import { resolveSatchel, resolveSatchelModules } from '../src/manual';
+import type { PageGlob, PageModule, SatchelPages } from '../src/types';
 
 interface Component { name: string; layout?: object }
 const vendor = { name: 'vendor' };
@@ -18,6 +18,33 @@ function maps(overrides: PageGlob<Component> = {}, files: PageGlob<Component> = 
 }
 
 describe('manual resolver', () => {
+  it.each([false, true])('preserves the entire winning module and its named layout (eager=%s)', async (eager) => {
+    const layout = {};
+    const module: PageModule<Component> = { default: override, layout };
+    const vendorModule = { default: vendor, layout: {} };
+    const resolve = resolveSatchelModules(() => vendorModule, maps(
+      { './Pages/vendor/acme-billing/Index.vue': eager ? module : async () => module },
+      { '../../vendor/billing/Pages/Index.vue': vendorModule },
+    ));
+    expect(await resolve('acme-billing::Index')).toBe(module);
+    expect(module.layout).toBe(layout);
+  });
+
+  it('delegates app module resolution with arguments and preserves named exports', async () => {
+    const module = { default: vendor, layout: {} };
+    const app = vi.fn((_name: string, _props: object) => module);
+    const resolve = resolveSatchelModules(app, maps());
+    const props = {};
+    expect(await resolve('Home', props)).toBe(module);
+    expect(app).toHaveBeenCalledExactlyOnceWith('Home', props);
+  });
+
+  it('applies the same errors to module resolution', async () => {
+    const resolve = resolveSatchelModules(() => ({ default: vendor }), maps());
+    await expect(resolve('acme-billing::Missing')).rejects.toThrow('Tried paths:');
+    await expect(resolve('acme-billing::../Invalid')).rejects.toThrow('Invalid component');
+  });
+
   it('delegates regular names with all original arguments', async () => {
     const app = vi.fn((name: string, page: { url: string }) => ({ name: name + page.url }));
     const resolve = resolveSatchel(app, maps());

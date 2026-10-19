@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "types": ["vite/client", "@dgtlss/satchel/client", "node", "react", "react-dom"]
+  },
+  "include": ["resources/react/**/*.ts", "resources/react/**/*.tsx", "../../tests/Fixtures/AcmeBilling/resources/react/**/*.tsx"]
+}

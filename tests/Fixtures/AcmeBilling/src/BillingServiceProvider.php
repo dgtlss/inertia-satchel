@@ -9,6 +9,6 @@ class BillingServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
-        Satchel::pages('acme-billing', __DIR__.'/../resources/js/Pages');
+        Satchel::pages('acme-billing', config('acme-billing.pages_path', __DIR__.'/../resources/js/Pages'));
     }
 }

@@ -1,4 +1,4 @@
-name: JavaScript and Vue example
+name: JavaScript and framework examples
 
 on:
   push:
@@ -8,8 +8,26 @@ permissions:
   contents: read
 
 jobs:
-  vue:
-    runs-on: ubuntu-latest
+  packages:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - run: node scripts/test-packed.mjs
+
+  examples:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        example: [vue, vue-ssr, react, svelte]
+    name: ${{ matrix.example }} browser
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,14 +41,36 @@ jobs:
           coverage: none
           tools: composer:v2
       - run: npm ci
-      - run: npm test
       - run: composer install --working-dir=examples/laravel --no-interaction --prefer-dist
       - run: npm run build
       - run: npm run typecheck
+        if: matrix.example == 'vue'
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+      - run: node scripts/test-examples.mjs ${{ matrix.example }}
+      - name: Annotate browser failures
+        if: failure()
+        env:
+          SATCHEL_TEST_TARGET: ${{ matrix.example }}
+        run: |
+          node --input-type=module <<'JS'
+          import { existsSync, readFileSync } from 'node:fs';
+          const path = `test-results/playwright/${process.env.SATCHEL_TEST_TARGET}/results.json`;
+          if (existsSync(path)) {
+            const report = JSON.parse(readFileSync(path, 'utf8'));
+            const escape = (text) => text.replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A');
+            const visit = (suite) => {
+              for (const spec of suite.specs ?? []) for (const test of spec.tests) for (const result of test.results) {
+                if (result.status !== 'passed') for (const error of result.errors ?? []) {
+                  console.log(`::error title=${escape(spec.title)}::${escape(error.message ?? 'Browser test failed')}`);
+                }
+              }
+              for (const child of suite.suites ?? []) visit(child);
+            };
+            for (const suite of report.suites) visit(suite);
+          }
+          JS
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-failure
+          name: playwright-${{ matrix.example }}-failure
           path: test-results/playwright

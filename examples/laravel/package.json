@@ -5,15 +5,27 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
-    "build": "vite build"
+    "build": "vite build",
+    "build:ssr": "vite build && vite build --ssr",
+    "ssr": "node bootstrap/ssr/ssr.js"
   },
   "dependencies": {
     "@dgtlss/satchel": "0.0.0",
+    "@inertiajs/react": "^3.0.0",
+    "@inertiajs/svelte": "^3.0.0",
     "@inertiajs/vue3": "^3.0.0",
+    "@vue/server-renderer": "^3.5.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "svelte": "^5.0.0",
     "vue": "^3.5.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
+    "@sveltejs/vite-plugin-svelte": "^6.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^5.0.0",
     "laravel-vite-plugin": "^2.0.0",
     "tailwindcss": "^4.0.0",
     "vite-plugin-satchel": "0.0.0"
