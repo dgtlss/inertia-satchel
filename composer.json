@@ -1,0 +1,54 @@
+{
+    "name": "dgtlss/satchel",
+    "description": "Blade-style, overridable vendor pages for Inertia v3 and Laravel.",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^8.3",
+        "inertiajs/inertia-laravel": "^3.0",
+        "laravel/framework": "^12.0 || ^13.0",
+        "spatie/laravel-package-tools": "^1.92"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.0",
+        "orchestra/testbench": "^10.0 || ^11.0",
+        "pestphp/pest": "^3.8",
+        "phpstan/phpstan": "^2.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Dgtlss\\Satchel\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Acme\\Billing\\": "tests/Fixtures/AcmeBilling/src/",
+            "Dgtlss\\Satchel\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Dgtlss\\Satchel\\SatchelServiceProvider"
+            ],
+            "aliases": {
+                "Satchel": "Dgtlss\\Satchel\\Facades\\Satchel"
+            }
+        }
+    },
+    "scripts": {
+        "test": "pest",
+        "analyse": "phpstan analyse --memory-limit=512M",
+        "format": "pint",
+        "format:check": "pint --test",
+        "check": ["@test", "@analyse", "@format:check"]
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

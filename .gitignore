@@ -1,0 +1,8 @@
+/vendor/
+/composer.lock
+/.phpunit.cache/
+/.phpunit.result.cache
+/.phpstan/
+/.phpstan-cache/
+/coverage/
+/test-results/

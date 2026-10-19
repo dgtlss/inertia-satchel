@@ -1,0 +1,50 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.4', '8.5']
+        laravel: ['12', '13']
+        include:
+          - laravel: '12'
+            testbench: '^10.0'
+          - laravel: '13'
+            testbench: '^11.0'
+    name: PHP ${{ matrix.php }} / Laravel ${{ matrix.laravel }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, dom, xml, xmlwriter, pdo_sqlite
+          coverage: none
+          tools: composer:v2
+      - name: Select framework
+        run: composer require --no-interaction --no-update "laravel/framework:^${{ matrix.laravel }}.0" "orchestra/testbench:${{ matrix.testbench }}"
+      - run: composer update --no-interaction --prefer-dist --prefer-stable
+      - run: composer validate --strict
+      - run: composer check
+
+  inertia-3-0:
+    runs-on: ubuntu-latest
+    name: Inertia 3.0 compatibility
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, dom, xml, xmlwriter, pdo_sqlite
+          coverage: none
+          tools: composer:v2
+      - run: composer update --with inertiajs/inertia-laravel:3.0.0 --no-interaction --prefer-dist
+      - run: composer test

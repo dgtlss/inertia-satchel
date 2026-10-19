@@ -1,0 +1,19 @@
+{
+    "name": "acme/billing",
+    "description": "Example package fixture for Satchel's PHP tests.",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "dgtlss/satchel": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Acme\\Billing\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": ["Acme\\Billing\\BillingServiceProvider"]
+        }
+    }
+}
