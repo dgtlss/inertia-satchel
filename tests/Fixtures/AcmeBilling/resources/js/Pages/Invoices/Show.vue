@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import BillingLayout from '../../Layouts/BillingLayout.vue';
+import { Head } from '@inertiajs/vue3';
 defineOptions({ layout: BillingLayout });
 defineProps<{ invoice: { id: number; reference: string } }>();
 </script>
 
 <template>
+  <Head :title="invoice.reference" />
   <section data-testid="vendor-card" class="space-y-3 rounded-xl bg-fuchsia-700 p-7 text-white">
     <h1 class="text-3xl font-semibold" data-testid="vendor-page">Package invoice</h1>
     <p data-testid="invoice-prop">{{ invoice.reference }}</p>

@@ -1,6 +1,6 @@
 import { defineConfig } from '@playwright/test';
 
-const target = process.env.SATCHEL_SSR === 'true' ? 'vue-ssr' : process.env.SATCHEL_FRAMEWORK ?? 'vue';
+const target = `${process.env.SATCHEL_FRAMEWORK ?? 'vue'}${process.env.SATCHEL_SSR === 'true' ? '-ssr' : ''}${process.env.SATCHEL_DEV_SSR === 'true' ? '-dev' : ''}`;
 
 export default defineConfig({
   testDir: './e2e',

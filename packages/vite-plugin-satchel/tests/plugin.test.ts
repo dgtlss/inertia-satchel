@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { build, resolveConfig } from 'vite';
+import { build, createServer, optimizeDeps, resolveConfig } from 'vite';
 import satchel from '../src/index';
 import { readManifest, manifestHint } from '../src/manifest';
 import { generateDeclarations, generateModule, snapshot } from '../src/codegen';
@@ -130,6 +130,66 @@ describe('manifest and declarations', () => {
 });
 
 describe('literal glob code generation', () => {
+  it('optimizes ordinary dependencies without reading the synthetic module from disk', async () => {
+    file(join(root, 'entry.ts'), `import pages from 'virtual:satchel/pages';
+import dependency from 'fixture-dependency'; console.log(pages, dependency);`);
+    file(join(root, 'node_modules/fixture-dependency/package.json'), JSON.stringify({
+      name: 'fixture-dependency', version: '1.0.0', type: 'module', exports: './index.js',
+    }));
+    file(join(root, 'node_modules/fixture-dependency/index.js'), 'export default "optimized";');
+    const config = await resolveConfig({
+      configFile: false, root, logLevel: 'silent', plugins: [satchel()],
+      optimizeDeps: { entries: ['entry.ts'], exclude: ['keep-existing'] },
+    }, 'serve');
+    const metadata = await optimizeDeps(config, true);
+    expect(metadata.optimized['fixture-dependency']).toBeDefined();
+    expect(config.optimizeDeps.exclude).toContain('keep-existing');
+    expect(config.optimizeDeps.exclude).toContain('@dgtlss/satchel');
+  });
+
+  it('refreshes live SSR maps after atomic manifests, override changes, and invalid manifest recovery', async () => {
+    file(join(root, 'entry.ts'), `import pages from 'virtual:satchel/pages';
+import { resolveSatchel } from ${JSON.stringify(resolverSource)};
+export const resolvePage = resolveSatchel((name) => ({ name }), pages);`);
+    const server = await createServer({
+      configFile: false, root, logLevel: 'silent', plugins: [satchel()],
+      server: { host: '127.0.0.1', port: 0, fs: { allow: [root, dirname(resolverSource)] } },
+      optimizeDeps: { noDiscovery: true },
+    });
+    try {
+      await server.listen();
+      const resolvePage = async () => (await server.ssrLoadModule('/entry.ts')).resolvePage('acme-billing::Invoices/Show');
+      expect(await resolvePage()).toEqual({ name: 'vendor' });
+      await expect.poll(() => server.watcher.getWatched()[dirname(manifestFile)] ?? []).toContain('satchel.json');
+
+      const alternate = join(directory, 'alternate/Pages');
+      file(join(alternate, 'Invoices/Show.ts'), 'export default { name: "new-registration" };');
+      const data = {
+        version: 1, override_path: overrides,
+        namespaces: [{ namespace: 'acme-billing', path: alternate, extensions: ['ts'] }],
+      };
+      file(`${manifestFile}.tmp`, JSON.stringify(data));
+      renameSync(`${manifestFile}.tmp`, manifestFile);
+      await expect.poll(resolvePage).toEqual({ name: 'new-registration' });
+      expect(server.config.server.fs.allow).toContain(alternate);
+
+      const override = join(overrides, 'acme-billing/Invoices/Show.ts');
+      file(override, 'export default { name: "live-override" };');
+      await expect.poll(resolvePage).toEqual({ name: 'live-override' });
+      rmSync(override);
+      await expect.poll(resolvePage).toEqual({ name: 'new-registration' });
+
+      file(manifestFile, '{invalid');
+      await expect.poll(async () => {
+        try { await resolvePage(); return 'stale response'; } catch (error) { return (error as Error).message; }
+      }).toContain('Cannot read JSON manifest');
+      file(manifestFile, JSON.stringify(data));
+      await expect.poll(resolvePage).toEqual({ name: 'new-registration' });
+    } finally {
+      await server.close();
+    }
+  });
+
   it.each([false, true])('builds and resolves real globs outside the app root (eager=%s)', async (eager) => {
     file(join(vendor, 'Invoices/Index.ts'), 'export default { name: "vendor-index" };');
     file(join(overrides, 'acme-billing/Invoices/Index.ts'), 'export default { name: "override" };');

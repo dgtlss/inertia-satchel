@@ -86,9 +86,16 @@ export default function satchel(options: SatchelOptions = {}): Plugin {
       resolvedId = normalizePath(resolve(root, '.satchel-virtual-pages.js'));
       typesPath = options.dts === false ? false : resolve(root, options.dts ?? 'resources/js/satchel-pages.d.ts');
       read();
-      return { server: { fs: { allow: [...new Set([
-        ...(config.server?.fs?.allow ?? [searchForWorkspaceRoot(root)]), root, ...roots(),
-      ].map((path) => normalizePath(resolve(root, path))))] } } };
+      return {
+        // The generated module has no disk file for esbuild's dependency scan.
+        // Keep it and the importing runtime in Vite's normal transform pipeline.
+        optimizeDeps: { exclude: [...new Set([
+          ...(config.optimizeDeps?.exclude ?? []), '@dgtlss/satchel', virtualModuleId,
+        ])] },
+        server: { fs: { allow: [...new Set([
+          ...(config.server?.fs?.allow ?? [searchForWorkspaceRoot(root)]), root, ...roots(),
+        ].map((path) => normalizePath(resolve(root, path))))] } },
+      };
     },
     resolveId(id) {
       if (id === virtualModuleId) return resolvedId;

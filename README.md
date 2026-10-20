@@ -2,7 +2,7 @@
 
 Blade-style vendor pages for **Inertia v3**, **Laravel 12/13**, and **PHP 8.3+**. MIT licensed; Composer package name: `dgtlss/satchel`.
 
-**Unreleased, week 3: Vue, React, Svelte, and Vue SSR.** Registration, resolution, manifests, Artisan commands, the TypeScript resolvers, and the Vite plugin are implemented. All three adapters have production and dev browser checks; Vue also has server rendering and hydration checks. Nothing has been published to Composer or npm.
+**Unreleased: Vue, React, Svelte, and SSR.** Registration, resolution, manifests, Artisan commands, the TypeScript resolvers, and the Vite plugin are implemented. All three adapters have client rendering, production SSR, and development SSR checks, including hydration and request isolation. Nothing has been published to Composer or npm.
 
 ## Register package pages
 
@@ -104,7 +104,7 @@ createInertiaApp({
 
 The plugin reads the PHP manifest, provides `virtual:satchel/pages`, generates the `SatchelPage` type union, and handles watches/filesystem access for package pages. Use `@dgtlss/satchel/manual` for explicit glob maps without the plugin. Vue and React page layout properties are preserved. Svelte uses `resolveSatchelModules(existingAppResolver)` to retain the full module, including its named `layout` export. Tailwind v4 needs an explicit vendor `@source` line.
 
-See the [JavaScript guide](docs/javascript.md) for plugin configuration and generated code, and the [week 3 guide](docs/week-3.md) for adapter APIs, Vue SSR, compatibility, and remaining limits. The [Laravel example](examples/laravel/README.md) hosts all three frontends. The [week 2 contract](docs/week-2.md) records the PHP and Inertia integration boundaries. All packages remain unpublished.
+See the [JavaScript guide](docs/javascript.md) for plugin configuration and generated code, and the [SSR guide](docs/ssr.md) for all three server entries, hydration, development SSR, and deployment boundaries. The [week 3 guide](docs/week-3.md) covers adapter APIs and compatibility. The [Laravel example](examples/laravel/README.md) hosts all three frontends. The [week 2 contract](docs/week-2.md) records the PHP and Inertia integration boundaries. All packages remain unpublished.
 
 ## Develop
 

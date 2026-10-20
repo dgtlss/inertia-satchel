@@ -20,16 +20,24 @@ if (!/^APP_KEY=.+$/m.test(readFileSync(`${app}/.env`, 'utf8'))) run(php, ['artis
 run(php, ['artisan', 'satchel:manifest']);
 rmSync(`${app}/public/hot`, { force: true });
 const ssr = process.env.SATCHEL_SSR === 'true';
-run('npm', ['run', ssr ? 'build:ssr' : 'build']);
+const devSsr = process.env.SATCHEL_DEV_SSR === 'true';
+if (!devSsr) run('npm', ['run', ssr ? 'build:ssr' : 'build']);
 let renderer;
 if (ssr) {
-  renderer = spawn(process.execPath, ['bootstrap/ssr/ssr.js'], { cwd: app, stdio: 'inherit' });
+  renderer = devSsr
+    ? spawn('npm', ['run', 'dev'], {
+      cwd: app, stdio: 'inherit', detached: true,
+      env: { ...process.env, LARAVEL_BYPASS_ENV_CHECK: '1' },
+    })
+    : spawn(process.execPath, ['bootstrap/ssr/ssr.js'], { cwd: app, stdio: 'inherit' });
+  renderer.on('error', (error) => { throw error; });
   for (let attempt = 0; ; attempt++) {
     try {
-      if ((await fetch('http://127.0.0.1:13714/health')).ok) break;
+      const url = devSsr ? 'http://127.0.0.1:5173/__inertia_ssr' : 'http://127.0.0.1:13714/health';
+      if ((await fetch(url)).ok && (!devSsr || existsSync(`${app}/public/hot`))) break;
     } catch { /* Wait for the public Inertia SSR server's health endpoint. */ }
     if (renderer.exitCode !== null || attempt >= 100) {
-      renderer.kill('SIGTERM');
+      stopRenderer();
       throw new Error('The example SSR renderer did not become healthy.');
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -38,12 +46,22 @@ if (ssr) {
 const server = spawn(php, ['artisan', 'serve', '--host=0.0.0.0', '--port=8000', '--no-reload'], {
   cwd: app, stdio: 'inherit', env: { ...process.env, INERTIA_SSR_ENABLED: String(ssr), INERTIA_SSR_THROW_ON_ERROR: 'true' },
 });
+function stopRenderer(signal = 'SIGTERM') {
+  if (!renderer || renderer.exitCode !== null) return;
+  try {
+    if (devSsr && renderer.pid) process.kill(-renderer.pid, signal);
+    else renderer.kill(signal);
+  } catch (error) {
+    if (error.code !== 'ESRCH') throw error;
+  }
+}
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => {
   server.kill(signal);
-  renderer?.kill(signal);
+  stopRenderer(signal);
 });
 server.on('error', (error) => { throw error; });
 server.on('exit', (code) => {
-  renderer?.kill('SIGTERM');
+  stopRenderer();
+  if (devSsr) rmSync(`${app}/public/hot`, { force: true });
   process.exit(code ?? 0);
 });

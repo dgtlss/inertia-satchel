@@ -1,16 +1,12 @@
-import { createRoot } from 'react-dom/client';
-import type { ComponentType } from 'react';
+import { createRoot, hydrateRoot } from 'react-dom/client';
 import { createInertiaApp } from '@inertiajs/react';
-import { resolveSatchel } from '@dgtlss/satchel';
-import type { PageModule } from '@dgtlss/satchel';
-
-const pages = import.meta.glob<PageModule<ComponentType>>(['./Pages/**/*.tsx', '!./Pages/vendor/**']);
+import { resolve } from './resolve';
 
 void createInertiaApp({
-  resolve: resolveSatchel<ComponentType>((name) => {
-    const load = pages[`./Pages/${name}.tsx`];
-    if (!load) throw new Error(`App page [${name}] was not found.`);
-    return load();
-  }),
-  setup: ({ el, App, props }) => { createRoot(el).render(<App {...props} />); },
+  resolve,
+  setup: ({ el, App, props }) => {
+    const element = <App {...props} />;
+    if (el.hasChildNodes()) hydrateRoot(el, element);
+    else createRoot(el).render(element);
+  },
 });

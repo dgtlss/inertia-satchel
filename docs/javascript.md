@@ -22,6 +22,8 @@ Generate the manifest on the build machine with `php artisan satchel:manifest` b
 
 The plugin preserves existing `server.fs.allow` paths and adds registered canonical package paths. Composer path-repository roots can be symlinks outside the app root. Directory symlinks *beneath* a registered root are excluded, matching PHP inventory. File symlinks escaping a declared root fail the build. Only registered namespaces, valid page names, and their configured extensions are imported.
 
+It also preserves existing dependency exclusions and adds `@dgtlss/satchel` and `virtual:satchel/pages` to `optimizeDeps.exclude`. These modules need Vite's normal transforms; the generated module has no disk file for the dependency scanner. Other dependencies still optimize normally.
+
 ## Generated code
 
 The Vue example's `virtual:satchel/pages` contains the following literal code. Paths are relative to the synthetic module's directory at the Vite root, so it also works when the package lives outside the app:
@@ -94,7 +96,7 @@ That line is for a stylesheet at `resources/css/app.css`. Use one line per packa
 
 ## Development and production behavior
 
-Page content edits use Vue HMR and preserve the current document and layout state. Page additions/removals regenerate the import map/types and trigger a full reload. Manifest changes also reload, including PHP's atomic replacement; newly registered directories are watched and allowed. Dev errors are sent to Vite's overlay rather than silently retaining a stale map.
+Page content edits use the framework plugin's HMR. Vue/React edits preserve the document and layout state; Svelte pages with named layout exports reload. Page additions/removals regenerate the import map/types and trigger a full reload. Manifest changes also reload, including PHP's atomic replacement; newly registered directories are watched and allowed. These invalidations also refresh the server import map when using development SSR. Dev errors are sent to Vite's overlay rather than silently retaining a stale map.
 
 Production assets need rebuilding when page files, overrides, extensions, or registration change. Keep PHP and client builds on the same manifest/files, and update the application's Inertia asset version on deployment. The manifest remains machine-specific build input rather than a public asset.
 
@@ -110,8 +112,8 @@ npm run test:packed
 npm run test:e2e
 ```
 
-Vitest covers runtime resolution/errors, extension precedence, component/module identity, named layouts, manual mode, manifest validation, declarations, symlink containment, real eager/lazy Vite builds, and Tailwind sources. The same Playwright behavior test runs against Vue, React, and Svelte, including navigation, props, layouts, overrides, Tailwind, manifest replacement, and override addition/removal. Two additional tests verify Vue SSR without JavaScript and hydration of the original server DOM. PHP's existing suite remains a separate regression check. CI runs the package and browser checks on Node 24/PHP 8.3; Vite 7 is the declared plugin peer range.
+Vitest covers runtime resolution/errors, extension precedence, component/module identity, named layouts, manual mode, manifest validation, declarations, symlink containment, real eager/lazy Vite builds, dependency scanning, live SSR invalidation/recovery, and Tailwind sources. Playwright runs all three frameworks in client, production SSR, and development SSR modes. Checks include HTML without JavaScript, hydration of the original server DOM, props, head output, concurrent request context, persistent layouts, HMR, and manifest/override changes. PHP's existing suite remains a separate regression check. CI runs the package and browser checks on Node 24/PHP 8.3; Vite 7 is the declared plugin peer range.
 
 `resolveSatchel()` returns a component for Vue and React. Svelte's public adapter expects a module with a named `layout` export, so use `resolveSatchelModules()`; the app resolver must also return modules. Both exports are available in `/manual` mode. No private Inertia imports are used. Svelte's current Vite plugin reloads pages with named exports rather than preserving state on those edits; default-only Svelte pages hot update. Vue/React template edits preserve the document and layout state.
 
-Vue production SSR is verified with the public `@inertiajs/vue3/server` entry, using the same resolver and manifest as the browser. Keep `@dgtlss/satchel` in `ssr.noExternal` so Vite transforms its virtual import. The packed-installation check extracts actual npm tarballs into a separate temporary app and verifies client/SSR builds, overrides, module layouts, manual exports, and generated types. See [week 3](week-3.md) for setup, tested versions, and remaining React/Svelte SSR and dev SSR work.
+Vue, React, and Svelte production SSR use their public adapter `/server` entries and the same resolver/manifest as the browser. Keep `@dgtlss/satchel` in `ssr.noExternal`; the Svelte example also compiles its adapter with `noExternal`. The packed-installation check extracts npm tarballs into a separate temporary app and verifies client/SSR builds, overrides, module layouts, manual exports, and generated types. See the [SSR guide](ssr.md) for server entries, development SSR, verified versions, and deployment boundaries.

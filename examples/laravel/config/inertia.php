@@ -7,6 +7,7 @@ return [
         'bundle' => base_path('bootstrap/ssr/ssr.js'),
         'ensure_bundle_exists' => true,
         'throw_on_error' => (bool) env('INERTIA_SSR_THROW_ON_ERROR', false),
-        'timeout' => 5,
+        // Leave time for the first development request to compile its page.
+        'timeout' => (float) env('INERTIA_SSR_TIMEOUT', 30),
     ],
 ];

@@ -1,4 +1,4 @@
-# Laravel examples: Vue, React, Svelte, and Vue SSR
+# Laravel examples: Vue, React, Svelte, and SSR
 
 A local Laravel 12/13 host using the root Composer package and `tests/Fixtures/AcmeBilling` as **symlinked Composer path repositories**. PHP 8.3+, Composer 2, and Node 22.12+ are required. No database or remote credentials are needed. All packages remain unpublished.
 
@@ -47,18 +47,19 @@ The home route demonstrates the original app resolver and PHP props. `/billing/i
 
 Vue/React pages carry a `layout` property on their default component. Svelte exports `layout` from its module script and uses `resolveSatchelModules()`. Svelte's current Vite plugin fully reloads pages with named layout exports when edited; default-only pages hot update. Vue and React page edits preserve the document and layout state.
 
-For Vue SSR, use the [week 3 instructions](../../docs/week-3.md#vue-production-ssr). The normal dev example uses client rendering. The production SSR build uses the same manifest and the public Inertia server entry, with `@dgtlss/satchel` included in `ssr.noExternal`.
+All three frameworks support production SSR and an opt-in development SSR bridge. Use the [SSR instructions](../../docs/ssr.md) for the framework server entries and corresponding PHP/Vite commands. The normal dev example uses client rendering. `SATCHEL_DEV_SSR=true` adds the example-only Vite HTTP bridge; enable `INERTIA_SSR_ENABLED=true` in PHP to use it. Production SSR uses the same manifest and the public adapter server entry, with `@dgtlss/satchel` included in `ssr.noExternal`. The Svelte example also compiles `@inertiajs/svelte`.
 
 Automated checks from the repository root:
 
 ```sh
 npm run typecheck
 npx playwright install chromium
-npm run test:e2e # Vue, Vue SSR, React, Svelte, sequentially
+npm run test:e2e # All nine client, SSR and dev SSR targets, sequentially
 npm run test:e2e -- vue-ssr # one target
+npm run test:e2e -- react-ssr-dev
 npm run test:packed # isolated npm tarball installation; no Laravel required
 ```
 
-The browser runner creates local `.env`/app key and storage directories if absent, regenerates the manifest, builds production assets, and boots Laravel. Dev tests start Vite, temporarily edit fixture/override files, and restore them in `finally`. Run one worker and avoid editing those files during the tests. Failures retain browser traces, Vite messages, and JSON results under `test-results/playwright/<target>`.
+The browser runner creates local `.env`/app key and storage directories if absent, regenerates the manifest, and boots Laravel with built assets or the live Vite server. SSR targets verify HTML without JavaScript, hydration of the original DOM, titles, props, persistent layouts, and concurrent request context. Dev SSR additionally checks edited files, overrides, and an atomic registration replacement outside the workspace. Tests restore temporary edits in `finally`. Run one worker and avoid editing those files during the tests. Failures retain browser traces, Vite messages, and JSON results under `test-results/playwright/<target>`.
 
 `PHP_BINARY` selects a PHP executable or wrapper; it must forward environment variables such as `SATCHEL_FRAMEWORK` and `INERTIA_SSR_ENABLED`. `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` selects an installed Chromium. The SSR renderer listens on the same machine's loopback address, so a containerized PHP wrapper must share that network or provide an equivalent `INERTIA_SSR_URL`.

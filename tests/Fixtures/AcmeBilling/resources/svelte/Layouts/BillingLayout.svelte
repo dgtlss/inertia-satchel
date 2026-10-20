@@ -1,13 +1,15 @@
 <script lang="ts">
-  import { Link } from '@inertiajs/svelte';
+  import { Link, usePage } from '@inertiajs/svelte';
   import type { Snippet } from 'svelte';
   let { children }: { children: Snippet } = $props();
   let count = $state(0);
+  const page = usePage<{ invoice?: { reference: string } }>();
 </script>
 
 <div class="mx-auto max-w-3xl space-y-6 p-8">
   <header data-testid="vendor-layout" class="space-y-4 border-b border-slate-200 pb-5">
     <p>Acme Billing · Svelte package layout</p>
+    <p data-testid="layout-reference">{page.props.invoice?.reference ?? 'No invoice'}</p>
     <nav class="flex gap-5 text-blue-700">
       <Link href="/">Home</Link>
       <Link href="/billing/invoices">Invoices</Link>

@@ -1,6 +1,6 @@
 # @dgtlss/satchel
 
-Unreleased ESM runtime for Satchel's Inertia v3 page names. Vue, React, Svelte, and Vue SSR are verified end to end. MIT licensed. Nothing is published to npm.
+Unreleased ESM runtime for Satchel's Inertia v3 page names. Vue, React, and Svelte client rendering and SSR are verified end to end. MIT licensed. Nothing is published to npm.
 
 With `vite-plugin-satchel` enabled:
 
@@ -52,4 +52,4 @@ Each `path` must match the key prefix produced by its glob **in that importer**.
 
 `resolveSatchelModules(appResolver, maps)` uses this same map format in manual mode. It preserves module identity and named exports for both eager and lazy maps.
 
-For SSR, include the runtime in Vite's `ssr.noExternal` so its virtual import is transformed. See the [JavaScript guide](../../docs/javascript.md), [SSR and adapter guide](../../docs/week-3.md), and [Laravel example](../../examples/laravel/README.md).
+For SSR, include the runtime in Vite's `ssr.noExternal` so its virtual import is transformed. See the [JavaScript guide](../../docs/javascript.md), [SSR guide](../../docs/ssr.md), and [Laravel example](../../examples/laravel/README.md).

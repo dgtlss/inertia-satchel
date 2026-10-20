@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        example: [vue, vue-ssr, react, svelte]
+        example: [vue, vue-ssr, vue-ssr-dev, react, react-ssr, react-ssr-dev, svelte, svelte-ssr, svelte-ssr-dev]
     name: ${{ matrix.example }} browser
     steps:
       - uses: actions/checkout@v4

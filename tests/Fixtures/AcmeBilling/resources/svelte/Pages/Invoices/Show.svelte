@@ -6,6 +6,8 @@
   let { invoice }: { invoice: { id: number; reference: string } } = $props();
 </script>
 
+<svelte:head><title>{invoice.reference}</title></svelte:head>
+
 <section data-testid="vendor-card" class="space-y-3 rounded-xl bg-fuchsia-700 p-7 text-white">
   <h1 data-testid="vendor-page">Package invoice</h1>
   <p data-testid="invoice-prop">{invoice.reference}</p>
