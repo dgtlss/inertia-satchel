@@ -116,59 +116,24 @@ if (devSsr) {
     const context = await browser.newContext({ javaScriptEnabled: false });
     const raw = await context.newPage();
     const errors: string[] = [];
-    const updates: { type?: string; path?: string; triggeredBy?: string; generation: number }[] = [];
-    let connections = 0;
     page.on('pageerror', (error) => errors.push(error.message));
-    page.on('websocket', (socket) => socket.on('framereceived', ({ payload }) => {
-      try {
-        const event = JSON.parse(String(payload));
-        if (event.type === 'connected') connections++;
-        updates.push({ ...event, generation: connections });
-      } catch { /* Non-JSON keepalive. */ }
-    }));
-    const pageEdit = async (source: string) => {
-      const before = connections;
-      const loaded = framework === 'svelte' ? page.waitForEvent('load') : undefined;
-      await writeFile(vendor, source);
-      if (loaded) {
-        await loaded;
-        await expect.poll(() => connections).toBeGreaterThan(before);
-      }
-      await page.waitForLoadState('networkidle');
-    };
-    const reloads = () => updates.filter((event) => event.type === 'full-reload'
-      && event.path === '*' && event.triggeredBy === undefined);
-    const registrationChange = async (change: () => Promise<void>) => {
-      await page.waitForLoadState('networkidle');
-      const before = reloads().length;
-      await change();
-      // Match a browser's ordering: render after Satchel has read the new map
-      // and invalidated it, rather than inside the file watch debounce window.
-      await expect.poll(() => reloads().length).toBeGreaterThan(before);
-      const signal = reloads()[before];
-      if (!signal) throw new Error('The Satchel reload signal was not received.');
-      // A cached networkidle state can still belong to the old document.
-      // Wait for the new document's Vite socket before the next mutation.
-      await expect.poll(() => connections).toBeGreaterThan(signal.generation);
-      await page.waitForLoadState('networkidle');
-    };
     const heading = async (url: string) => {
-      await raw.goto(`http://127.0.0.1:8000${url}`);
-      return raw.locator('h1').textContent();
+      const response = await raw.goto(`http://127.0.0.1:8000${url}`);
+      return { status: response?.status(), text: await raw.locator('h1').textContent() };
     };
+    // Vite processes file changes asynchronously. Observe the resulting HTTP
+    // response even when no browser is connected to receive HMR broadcasts.
+    const expectRendered = (url: string, text: string) => expect.poll(() => heading(url)).toEqual({ status: 200, text });
     try {
-      expect(await heading('/billing/invoices/42')).toBe('Package invoice');
-      await page.goto('/billing/invoices/42');
-      await page.waitForLoadState('networkidle');
-      await expect.poll(() => connections).toBeGreaterThan(0);
-      await pageEdit(vendorSource.replace('>Package invoice<', '>Package invoice live SSR<'));
-      await expect.poll(() => heading('/billing/invoices/42')).toBe('Package invoice live SSR');
-      await pageEdit(vendorSource);
+      expect(await heading('/billing/invoices/42')).toEqual({ status: 200, text: 'Package invoice' });
+      await writeFile(vendor, vendorSource.replace('>Package invoice<', '>Package invoice live SSR<'));
+      await expectRendered('/billing/invoices/42', 'Package invoice live SSR');
+      await writeFile(vendor, vendorSource);
 
-      await registrationChange(() => rm(override));
-      await expect.poll(() => heading('/billing/invoices')).toBe('Package invoices');
-      await registrationChange(() => writeFile(override, overrideSource));
-      await expect.poll(() => heading('/billing/invoices')).toBe('App invoice list override');
+      await rm(override);
+      await expectRendered('/billing/invoices', 'Package invoices');
+      await writeFile(override, overrideSource);
+      await expectRendered('/billing/invoices', 'App invoice list override');
 
       // A replacement registration is outside both the app and the workspace.
       // Preserve its relative layout imports and use the same installed peers.
@@ -180,15 +145,14 @@ if (devSsr) {
       const data = JSON.parse(manifestSource);
       const registration = data.namespaces.find((entry: { namespace: string; path: string }) => entry.namespace === 'acme-billing');
       registration.path = join(alternate, 'Pages');
-      await registrationChange(async () => {
-        await writeFile(`${manifest}.tmp`, JSON.stringify(data));
-        await rename(`${manifest}.tmp`, manifest);
-      });
-      await expect.poll(() => heading('/billing/invoices/42')).toBe('Alternate registration');
+      await writeFile(`${manifest}.tmp`, JSON.stringify(data));
+      await rename(`${manifest}.tmp`, manifest);
+      await expectRendered('/billing/invoices/42', 'Alternate registration');
 
+      await page.goto('/billing/invoices/42');
+      await page.waitForLoadState('networkidle');
       await expect(page.getByTestId('vendor-page')).toHaveText('Alternate registration');
       await expect(page.getByTestId('layout-reference')).toHaveText('INV-0042');
-      await page.waitForLoadState('networkidle');
       expect(errors).toEqual([]);
       await page.getByTestId('layout-counter').click();
       await expect(page.getByTestId('layout-counter')).toHaveText('Layout count: 1');
