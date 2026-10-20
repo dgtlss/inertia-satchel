@@ -116,14 +116,14 @@ if (devSsr) {
     const context = await browser.newContext({ javaScriptEnabled: false });
     const raw = await context.newPage();
     const errors: string[] = [];
-    const updates: { type?: string; path?: string; triggeredBy?: string }[] = [];
+    const updates: { type?: string; path?: string; triggeredBy?: string; generation: number }[] = [];
     let connections = 0;
     page.on('pageerror', (error) => errors.push(error.message));
     page.on('websocket', (socket) => socket.on('framereceived', ({ payload }) => {
       try {
         const event = JSON.parse(String(payload));
-        updates.push(event);
         if (event.type === 'connected') connections++;
+        updates.push({ ...event, generation: connections });
       } catch { /* Non-JSON keepalive. */ }
     }));
     const pageEdit = async (source: string) => {
@@ -136,15 +136,21 @@ if (devSsr) {
       }
       await page.waitForLoadState('networkidle');
     };
-    const reloadCount = () => updates.filter((event) => event.type === 'full-reload'
-      && event.path === '*' && event.triggeredBy === undefined).length;
+    const reloads = () => updates.filter((event) => event.type === 'full-reload'
+      && event.path === '*' && event.triggeredBy === undefined);
     const registrationChange = async (change: () => Promise<void>) => {
       await page.waitForLoadState('networkidle');
-      const before = reloadCount();
+      const before = reloads().length;
       await change();
       // Match a browser's ordering: render after Satchel has read the new map
       // and invalidated it, rather than inside the file watch debounce window.
-      await expect.poll(reloadCount).toBeGreaterThan(before);
+      await expect.poll(() => reloads().length).toBeGreaterThan(before);
+      const signal = reloads()[before];
+      if (!signal) throw new Error('The Satchel reload signal was not received.');
+      // A cached networkidle state can still belong to the old document.
+      // Wait for the new document's Vite socket before the next mutation.
+      await expect.poll(() => connections).toBeGreaterThan(signal.generation);
+      await page.waitForLoadState('networkidle');
     };
     const heading = async (url: string) => {
       await raw.goto(`http://127.0.0.1:8000${url}`);
